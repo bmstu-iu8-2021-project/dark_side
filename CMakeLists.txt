@@ -1,15 +1,19 @@
 cmake_minimum_required(VERSION 3.20)
 project(dark_side)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 find_package(Boost REQUIRED COMPONENTS system thread)
-find_package(SQLite3)
+find_package(PkgConfig REQUIRED)
+#find_package(SQLite3)
+pkg_check_modules(ODBSQLite REQUIRED libodb libodb-sqlite libodb-mysql)
+pkg_check_modules(Botan REQUIRED botan-2)
 
-include_directories(${Boost_INCLUDE_DIR} ${SQLite3_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIRS} ${SQLite3_INCLUDE_DIR} ${ODBSQLite_INCLUDE_DIRS} ${Botan_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} STATIC
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/source.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/user-odb.cxx
         )
 
 add_executable(app
@@ -21,5 +25,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         "$<INSTALL_INTERFACE:include>"
         )
 
-target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${SQLite3_LIBRARY})
-target_link_libraries(app ${PROJECT_NAME})
+message(STATUS ${ODBSQLite_LIBRARIES})
+target_link_libraries(app ${PROJECT_NAME} ${Boost_LIBRARIES} ${ODBSQLite_LIBRARIES} ${Botan_LIBRARIES})
