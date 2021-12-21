@@ -162,6 +162,18 @@ namespace odb
     port_type_;
 
     static const port_type_ port;
+
+    // key_storage
+    //
+    typedef
+    sqlite::query_column<
+      sqlite::value_traits<
+        ::std::string,
+        sqlite::id_text >::query_type,
+      sqlite::id_text >
+    key_storage_type_;
+
+    static const key_storage_type_ key_storage;
   };
 
   template <typename A>
@@ -193,6 +205,11 @@ namespace odb
   const typename query_columns< ::User, id_sqlite, A >::port_type_
   query_columns< ::User, id_sqlite, A >::
   port (A::table_name, "\"port\"", 0);
+
+  template <typename A>
+  const typename query_columns< ::User, id_sqlite, A >::key_storage_type_
+  query_columns< ::User, id_sqlite, A >::
+  key_storage (A::table_name, "\"key_storage\"", 0);
 
   template <typename A>
   struct pointer_query_columns< ::User, id_sqlite, A >:
@@ -249,6 +266,12 @@ namespace odb
       long long port_value;
       bool port_null;
 
+      // key_storage_
+      //
+      details::buffer key_storage_value;
+      std::size_t key_storage_size;
+      bool key_storage_null;
+
       std::size_t version;
     };
 
@@ -288,7 +311,7 @@ namespace odb
 
     typedef sqlite::query_base query_base_type;
 
-    static const std::size_t column_count = 6UL;
+    static const std::size_t column_count = 7UL;
     static const std::size_t id_column_count = 1UL;
     static const std::size_t inverse_column_count = 0UL;
     static const std::size_t readonly_column_count = 0UL;

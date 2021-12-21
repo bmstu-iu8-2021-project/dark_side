@@ -108,6 +108,14 @@ namespace odb
     //
     t[5UL] = false;
 
+    // key_storage_
+    //
+    if (t[6UL])
+    {
+      i.key_storage_value.capacity (i.key_storage_size);
+      grew = true;
+    }
+
     return grew;
   }
 
@@ -181,6 +189,17 @@ namespace odb
     b[n].type = sqlite::bind::integer;
     b[n].buffer = &i.port_value;
     b[n].is_null = &i.port_null;
+    n++;
+
+    // key_storage_
+    //
+    b[n].type = sqlite::image_traits<
+      ::std::string,
+      sqlite::id_text>::bind_value;
+    b[n].buffer = i.key_storage_value.data ();
+    b[n].size = &i.key_storage_size;
+    b[n].capacity = i.key_storage_value.capacity ();
+    b[n].is_null = &i.key_storage_null;
     n++;
   }
 
@@ -315,6 +334,25 @@ namespace odb
       i.port_null = is_null;
     }
 
+    // key_storage_
+    //
+    {
+      ::std::string const& v =
+        o.key_storage_;
+
+      bool is_null (false);
+      std::size_t cap (i.key_storage_value.capacity ());
+      sqlite::value_traits<
+          ::std::string,
+          sqlite::id_text >::set_image (
+        i.key_storage_value,
+        i.key_storage_size,
+        is_null,
+        v);
+      i.key_storage_null = is_null;
+      grew = grew || (cap != i.key_storage_value.capacity ());
+    }
+
     return grew;
   }
 
@@ -414,6 +452,21 @@ namespace odb
         i.port_value,
         i.port_null);
     }
+
+    // key_storage_
+    //
+    {
+      ::std::string& v =
+        o.key_storage_;
+
+      sqlite::value_traits<
+          ::std::string,
+          sqlite::id_text >::set_value (
+        v,
+        i.key_storage_value,
+        i.key_storage_size,
+        i.key_storage_null);
+    }
   }
 
   void access::object_traits_impl< ::User, id_sqlite >::
@@ -438,9 +491,10 @@ namespace odb
   "\"username\", "
   "\"password\", "
   "\"address\", "
-  "\"port\") "
+  "\"port\", "
+  "\"key_storage\") "
   "VALUES "
-  "(?, ?, ?, ?, ?, ?)";
+  "(?, ?, ?, ?, ?, ?, ?)";
 
   const char access::object_traits_impl< ::User, id_sqlite >::find_statement[] =
   "SELECT "
@@ -449,7 +503,8 @@ namespace odb
   "\"Users\".\"username\", "
   "\"Users\".\"password\", "
   "\"Users\".\"address\", "
-  "\"Users\".\"port\" "
+  "\"Users\".\"port\", "
+  "\"Users\".\"key_storage\" "
   "FROM \"Users\" "
   "WHERE \"Users\".\"id\"=?";
 
@@ -460,7 +515,8 @@ namespace odb
   "\"username\"=?, "
   "\"password\"=?, "
   "\"address\"=?, "
-  "\"port\"=? "
+  "\"port\"=?, "
+  "\"key_storage\"=? "
   "WHERE \"id\"=?";
 
   const char access::object_traits_impl< ::User, id_sqlite >::erase_statement[] =
@@ -474,7 +530,8 @@ namespace odb
   "\"Users\".\"username\", "
   "\"Users\".\"password\", "
   "\"Users\".\"address\", "
-  "\"Users\".\"port\" "
+  "\"Users\".\"port\", "
+  "\"Users\".\"key_storage\" "
   "FROM \"Users\"";
 
   const char access::object_traits_impl< ::User, id_sqlite >::erase_query_statement[] =
@@ -894,7 +951,8 @@ namespace odb
                       "  \"username\" TEXT NOT NULL,\n"
                       "  \"password\" TEXT NOT NULL,\n"
                       "  \"address\" TEXT NOT NULL,\n"
-                      "  \"port\" INTEGER NOT NULL)");
+                      "  \"port\" INTEGER NOT NULL,\n"
+                      "  \"key_storage\" TEXT NOT NULL)");
           return false;
         }
       }
