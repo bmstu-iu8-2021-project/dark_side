@@ -22,9 +22,7 @@ Database::Database()
   db->execute(
       "CREATE TABLE IF NOT EXISTS Users ("
       "id BIGINT UNSIGNED NOT NULL PRIMARY KEY,"
-      "status TEXT NOT NULL,"
       "username TEXT NOT NULL,"
-      "password TEXT NOT NULL,"
       "address TEXT NOT NULL,"
       "port BIGINT UNSIGNED NOT NULL,"
       "key_storage TEXT NOT NULL)");
@@ -122,12 +120,13 @@ void Database::erase() {
 //    t.commit();
 //  }
 
-void Database::print_users() {
+void Database::print_users() const {
   try {
     odb::transaction t(db->begin());
     odb::result<User> list(db->query<User>());
     std::string line(80, '-');
-    std::cout << "Known users: " << std::endl;
+
+    std::cout << line << std::endl << "Known users: " << std::endl;
     if (list.empty()) {
       std::cout << "nobody" << std::endl << std::endl;
     }
@@ -135,9 +134,21 @@ void Database::print_users() {
       std::cout << line << std::endl;
       std::cout << "User ID: " << i->id() << std::endl
                 << "Username: " << i->username() << std::endl;
-      std::cout << line << std::endl;
     }
+    std::cout << line << std::endl;
     t.commit();
+  } catch (const odb::exception& e) {
+    std::cerr << e.what() << std::endl;
+  }
+}
+
+bool Database::empty() const {
+  try {
+    odb::transaction t(db->begin());
+    odb::result<User> list(db->query<User>());
+    bool empty = list.empty();
+    t.commit();
+    return empty;
   } catch (const odb::exception& e) {
     std::cerr << e.what() << std::endl;
   }

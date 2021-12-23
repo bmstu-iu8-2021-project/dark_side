@@ -72,33 +72,17 @@ namespace odb
     //
     t[0UL] = false;
 
-    // status_
-    //
-    if (t[1UL])
-    {
-      i.status_value.capacity (i.status_size);
-      grew = true;
-    }
-
     // username_
     //
-    if (t[2UL])
+    if (t[1UL])
     {
       i.username_value.capacity (i.username_size);
       grew = true;
     }
 
-    // password_
-    //
-    if (t[3UL])
-    {
-      i.password_value.capacity (i.password_size);
-      grew = true;
-    }
-
     // address_
     //
-    if (t[4UL])
+    if (t[2UL])
     {
       i.address_value.capacity (i.address_size);
       grew = true;
@@ -106,11 +90,11 @@ namespace odb
 
     // port_
     //
-    t[5UL] = false;
+    t[3UL] = false;
 
     // key_storage_
     //
-    if (t[6UL])
+    if (t[4UL])
     {
       i.key_storage_value.capacity (i.key_storage_size);
       grew = true;
@@ -140,17 +124,6 @@ namespace odb
       n++;
     }
 
-    // status_
-    //
-    b[n].type = sqlite::image_traits<
-      ::std::string,
-      sqlite::id_text>::bind_value;
-    b[n].buffer = i.status_value.data ();
-    b[n].size = &i.status_size;
-    b[n].capacity = i.status_value.capacity ();
-    b[n].is_null = &i.status_null;
-    n++;
-
     // username_
     //
     b[n].type = sqlite::image_traits<
@@ -160,17 +133,6 @@ namespace odb
     b[n].size = &i.username_size;
     b[n].capacity = i.username_value.capacity ();
     b[n].is_null = &i.username_null;
-    n++;
-
-    // password_
-    //
-    b[n].type = sqlite::image_traits<
-      ::std::string,
-      sqlite::id_text>::bind_value;
-    b[n].buffer = i.password_value.data ();
-    b[n].size = &i.password_size;
-    b[n].capacity = i.password_value.capacity ();
-    b[n].is_null = &i.password_null;
     n++;
 
     // address_
@@ -242,25 +204,6 @@ namespace odb
       i.id_null = is_null;
     }
 
-    // status_
-    //
-    {
-      ::std::string const& v =
-        o.status_;
-
-      bool is_null (false);
-      std::size_t cap (i.status_value.capacity ());
-      sqlite::value_traits<
-          ::std::string,
-          sqlite::id_text >::set_image (
-        i.status_value,
-        i.status_size,
-        is_null,
-        v);
-      i.status_null = is_null;
-      grew = grew || (cap != i.status_value.capacity ());
-    }
-
     // username_
     //
     {
@@ -278,25 +221,6 @@ namespace odb
         v);
       i.username_null = is_null;
       grew = grew || (cap != i.username_value.capacity ());
-    }
-
-    // password_
-    //
-    {
-      ::std::string const& v =
-        o.password_;
-
-      bool is_null (false);
-      std::size_t cap (i.password_value.capacity ());
-      sqlite::value_traits<
-          ::std::string,
-          sqlite::id_text >::set_image (
-        i.password_value,
-        i.password_size,
-        is_null,
-        v);
-      i.password_null = is_null;
-      grew = grew || (cap != i.password_value.capacity ());
     }
 
     // address_
@@ -379,21 +303,6 @@ namespace odb
         i.id_null);
     }
 
-    // status_
-    //
-    {
-      ::std::string& v =
-        o.status_;
-
-      sqlite::value_traits<
-          ::std::string,
-          sqlite::id_text >::set_value (
-        v,
-        i.status_value,
-        i.status_size,
-        i.status_null);
-    }
-
     // username_
     //
     {
@@ -407,21 +316,6 @@ namespace odb
         i.username_value,
         i.username_size,
         i.username_null);
-    }
-
-    // password_
-    //
-    {
-      ::std::string& v =
-        o.password_;
-
-      sqlite::value_traits<
-          ::std::string,
-          sqlite::id_text >::set_value (
-        v,
-        i.password_value,
-        i.password_size,
-        i.password_null);
     }
 
     // address_
@@ -487,21 +381,17 @@ namespace odb
   const char access::object_traits_impl< ::User, id_sqlite >::persist_statement[] =
   "INSERT INTO \"Users\" "
   "(\"id\", "
-  "\"status\", "
   "\"username\", "
-  "\"password\", "
   "\"address\", "
   "\"port\", "
   "\"key_storage\") "
   "VALUES "
-  "(?, ?, ?, ?, ?, ?, ?)";
+  "(?, ?, ?, ?, ?)";
 
   const char access::object_traits_impl< ::User, id_sqlite >::find_statement[] =
   "SELECT "
   "\"Users\".\"id\", "
-  "\"Users\".\"status\", "
   "\"Users\".\"username\", "
-  "\"Users\".\"password\", "
   "\"Users\".\"address\", "
   "\"Users\".\"port\", "
   "\"Users\".\"key_storage\" "
@@ -511,9 +401,7 @@ namespace odb
   const char access::object_traits_impl< ::User, id_sqlite >::update_statement[] =
   "UPDATE \"Users\" "
   "SET "
-  "\"status\"=?, "
   "\"username\"=?, "
-  "\"password\"=?, "
   "\"address\"=?, "
   "\"port\"=?, "
   "\"key_storage\"=? "
@@ -526,9 +414,7 @@ namespace odb
   const char access::object_traits_impl< ::User, id_sqlite >::query_statement[] =
   "SELECT "
   "\"Users\".\"id\", "
-  "\"Users\".\"status\", "
   "\"Users\".\"username\", "
-  "\"Users\".\"password\", "
   "\"Users\".\"address\", "
   "\"Users\".\"port\", "
   "\"Users\".\"key_storage\" "
@@ -947,9 +833,7 @@ namespace odb
         {
           db.execute ("CREATE TABLE \"Users\" (\n"
                       "  \"id\" INTEGER NOT NULL PRIMARY KEY,\n"
-                      "  \"status\" TEXT NOT NULL,\n"
                       "  \"username\" TEXT NOT NULL,\n"
-                      "  \"password\" TEXT NOT NULL,\n"
                       "  \"address\" TEXT NOT NULL,\n"
                       "  \"port\" INTEGER NOT NULL,\n"
                       "  \"key_storage\" TEXT NOT NULL)");

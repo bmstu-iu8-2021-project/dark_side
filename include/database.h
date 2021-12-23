@@ -23,10 +23,12 @@ class Database {
 
   //  void update_user(const User& upd_data);
 
-  void print_users();
+  void print_users() const;
+
+  bool empty() const;
 
  private:
-  std::unique_ptr<odb::database> db;
+  std::shared_ptr<odb::database> db;
 };
 
 #endif  // DARK_SIDE_DATABASE_H

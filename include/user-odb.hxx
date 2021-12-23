@@ -103,18 +103,6 @@ namespace odb
 
     static const id_type_ id;
 
-    // status
-    //
-    typedef
-    sqlite::query_column<
-      sqlite::value_traits<
-        ::std::string,
-        sqlite::id_text >::query_type,
-      sqlite::id_text >
-    status_type_;
-
-    static const status_type_ status;
-
     // username
     //
     typedef
@@ -126,18 +114,6 @@ namespace odb
     username_type_;
 
     static const username_type_ username;
-
-    // password
-    //
-    typedef
-    sqlite::query_column<
-      sqlite::value_traits<
-        ::std::string,
-        sqlite::id_text >::query_type,
-      sqlite::id_text >
-    password_type_;
-
-    static const password_type_ password;
 
     // address
     //
@@ -182,19 +158,9 @@ namespace odb
   id (A::table_name, "\"id\"", 0);
 
   template <typename A>
-  const typename query_columns< ::User, id_sqlite, A >::status_type_
-  query_columns< ::User, id_sqlite, A >::
-  status (A::table_name, "\"status\"", 0);
-
-  template <typename A>
   const typename query_columns< ::User, id_sqlite, A >::username_type_
   query_columns< ::User, id_sqlite, A >::
   username (A::table_name, "\"username\"", 0);
-
-  template <typename A>
-  const typename query_columns< ::User, id_sqlite, A >::password_type_
-  query_columns< ::User, id_sqlite, A >::
-  password (A::table_name, "\"password\"", 0);
 
   template <typename A>
   const typename query_columns< ::User, id_sqlite, A >::address_type_
@@ -237,23 +203,11 @@ namespace odb
       long long id_value;
       bool id_null;
 
-      // status_
-      //
-      details::buffer status_value;
-      std::size_t status_size;
-      bool status_null;
-
       // username_
       //
       details::buffer username_value;
       std::size_t username_size;
       bool username_null;
-
-      // password_
-      //
-      details::buffer password_value;
-      std::size_t password_size;
-      bool password_null;
 
       // address_
       //
@@ -311,7 +265,7 @@ namespace odb
 
     typedef sqlite::query_base query_base_type;
 
-    static const std::size_t column_count = 7UL;
+    static const std::size_t column_count = 5UL;
     static const std::size_t id_column_count = 1UL;
     static const std::size_t inverse_column_count = 0UL;
     static const std::size_t readonly_column_count = 0UL;

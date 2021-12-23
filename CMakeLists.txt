@@ -8,15 +8,17 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(ODBSQLite REQUIRED libodb libodb-sqlite)
 pkg_check_modules(Botan REQUIRED botan-2)
 
-include_directories(${Boost_INCLUDE_DIRS} ${SQLite3_INCLUDE_DIR} ${ODBSQLite_INCLUDE_DIRS} ${Botan_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS} ${ODBSQLite_INCLUDE_DIRS} ${Botan_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} STATIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/sources/source.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/user-odb.cxx
-        ${CMAKE_CURRENT_SOURCE_DIR}/sources/ui.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/database_redactor.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/convert.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/encrypt.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/sources/database.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/database.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/file_sharing.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/client.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/server.cpp)
 
 add_executable(app
         ${CMAKE_CURRENT_SOURCE_DIR}/app/main.cpp
