@@ -19,23 +19,19 @@ class Secure_channel {
  public:
   Secure_channel(std::shared_ptr<Botan::PKCS8_PrivateKey> my_k);
 
-  /// Sender to receiver step 1
+  /// Initialisation of Secure Channel part ////////////////////////////////////
+  /// id + indextime + fingerprint
   std::vector<uint8_t> send_handshake(const User& sender, const User& receiver);
   bool receive_handshake(const std::vector<uint8_t>& in_msg, User& sender,
                          const User& receiver, const Database& db);
 
-  ///
+  /// key parts
   std::vector<uint8_t> send_init_data();
   bool finalise_protocol(const std::vector<uint8_t>& in_msg,
                          const std::string& role);
 
  private:
   void extract_pub_key(const std::string& pub_key_path);
-
-  /// Initialisation of Secure Channel part ////////////////////////////////////
-
-  /// id + indextime + fingerprint
-  /// id + indextime + fingerprint
 
   std::vector<uint8_t> PK_encrypt_msg(const std::vector<uint8_t>& msg);
 
@@ -46,20 +42,20 @@ class Secure_channel {
   bool PK_verify_msg(const std::vector<uint8_t>& msg,
                      const std::vector<uint8_t>& signature);
 
-  std::vector<uint8_t> compute_mac(const std::vector<uint8_t>& msg);
-
   Botan::secure_vector<uint8_t> keys_hash(
       const Botan::secure_vector<uint8_t>& in_key,
       const std::string& key_purpose);
 
- public:
   /// Stream part //////////////////////////////////////////////////////////////
+ public:
+  std::vector<uint8_t> decrypt_buff(const std::vector<uint8_t>& input,
+                                    size_t msg_num);
 
   std::vector<uint8_t> encipher_buff(const std::vector<uint8_t>& input,
                                      size_t msg_num);
 
-  std::vector<uint8_t> decrypt_buff(const std::vector<uint8_t>& input,
-                                    size_t msg_num);
+ private:
+  std::vector<uint8_t> compute_mac(const std::vector<uint8_t>& msg);
 
  private:
   std::shared_ptr<Botan::PKCS8_PrivateKey> my_private_key_;
@@ -76,8 +72,6 @@ class Secure_channel {
 
   size_t mac_size_;
   size_t PK_size_;
-
-  bool discredited_;
 };
 
 #endif  // DARK_SIDE_ENCRYPTION_H

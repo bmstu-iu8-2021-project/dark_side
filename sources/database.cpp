@@ -126,7 +126,7 @@ void Database::print_users() const {
     odb::result<User> list(db->query<User>());
     std::string line(80, '-');
 
-    std::cout << line << std::endl << "Known users: " << std::endl;
+    std::cout << std::endl << line << std::endl << "Known users: " << std::endl;
     if (list.empty()) {
       std::cout << "nobody" << std::endl << std::endl;
     }

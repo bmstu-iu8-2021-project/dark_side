@@ -28,7 +28,7 @@ class Server : public std::enable_shared_from_this<Server> {
 
   void accept_file();
 
-  void read_to_block();
+  void read_safe_data();
 
   void read_to_buff();
 
@@ -58,7 +58,7 @@ class Server : public std::enable_shared_from_this<Server> {
   size_t msg_count_;
   size_t buff_size_ = 81920;
   std::streamsize block_size_ = 40960 + 32 + 8;
-  size_t time_dl_ = 60;
+  size_t time_dl_;
   bool disconnect_;
   //  bool clients_changed_;
 };

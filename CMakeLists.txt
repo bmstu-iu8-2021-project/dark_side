@@ -11,7 +11,7 @@ pkg_check_modules(Botan REQUIRED botan-2)
 include_directories(${Boost_INCLUDE_DIRS} ${ODBSQLite_INCLUDE_DIRS} ${Botan_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} STATIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/user-odb.cxx
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/user-odb.cxx
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/database_redactor.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/convert.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sources/encrypt.cpp

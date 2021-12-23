@@ -30,7 +30,7 @@ class Client {
 
   void write_request(const std::vector<uint8_t> &msg);
 
-  void transmit_data(const std::vector<uint8_t> &buff);
+  void transmit_safe_data(const std::vector<uint8_t> &buff);
 
   void read_to_buff();
 
@@ -47,7 +47,7 @@ class Client {
 
   deadline_timer dc_timer_;
   boost::system::error_code err_c_;
-  boost::asio::signal_set sig_;
+  //  boost::asio::signal_set sig_;
 
   std::string file_path_;
 
@@ -55,7 +55,7 @@ class Client {
   size_t already_read_;
   size_t buff_size_ = 81920;
   std::streamsize block_size_ = 40960;
-  size_t time_dl_ = 55;
+  size_t time_dl_;
 };
 
 #endif  // DARK_SIDE_CLIENT_H

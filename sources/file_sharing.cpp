@@ -2,6 +2,8 @@
 
 #include "file_sharing.h"
 
+#include <boost/filesystem.hpp>
+#include <boost/system.hpp>
 #include <iostream>
 #include <list>
 #include <thread>
@@ -10,15 +12,21 @@
 #include "server.h"
 
 void file_sharing(const std::string &db_path) {
+  std::cout << "Welcome to the file messenger!" << std::endl << std::endl;
+
   Database db(db_path);
   User me;
   std::shared_ptr<Botan::PKCS8_PrivateKey> private_key = log_in(db, me);
 
-  std::string file_dir;
-  std::cout << "Enter full path to directory where you want to store accepted "
-               "files: ";
-  std::cin >> file_dir;
-  std::cout << std::endl;
+  boost::system::error_code err;
+
+  std::string file_dir = "accepted_files";
+  if (!boost::filesystem::exists(file_dir)) {
+    boost::filesystem::create_directory(file_dir, err);
+  }
+  if (err) {
+    std::cout << "Failed to create a directory" << std::endl;
+  }
 
   std::thread acceptor_thread(accept_thread, std::ref(me), std::ref(db),
                               std::ref(file_dir), private_key);
@@ -46,6 +54,8 @@ void file_sharing(const std::string &db_path) {
     std::string line(80, '-');
     std::cout << line << std::endl << std::endl;
   }
+
+  acceptor_thread.join();
 }
 
 std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db,
@@ -84,7 +94,9 @@ std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db,
           "private_" + std::to_string(incoming_user.id()), *rng,
           Botan::hex_encode(pw_in_bytes)));
 
-      std::cout << std::endl << "Welcome to the club, buddy!" << std::endl;
+      std::cout << std::endl
+                << "Welcome to the club, " << incoming_user.username() << "!"
+                << std::endl;
       std::string line(80, '-');
       std::cout << line << std::endl << std::endl;
       return priv_k;
@@ -97,18 +109,17 @@ std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db,
       std::cout << "Incorrect password, try again!" << std::endl;
     }
   }
+  return nullptr;
 }
-
-void handle_connection(client_ptr client) { client->connect(); }
 
 void accept_thread(const User &receiver, const Database &db,
                    const std::string &file_dir,
                    const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key) {
   io_context context;
-  ip::tcp::acceptor acceptor(context, ip::tcp::endpoint(ip::tcp::v4(), 1747));
+  ip::tcp::acceptor acceptor(context,
+                             ip::tcp::endpoint(ip::tcp::v4(), receiver.port()));
   acceptor.listen();
-  std::cout << "Now you can accept files from other users " << std::endl
-            << std::endl;
+  //  std::cout << "Now you can accept files from other users" << std::endl;
   std::list<std::thread> thr_list;
   boost::system::error_code err_c;
   while (true) {
@@ -126,24 +137,35 @@ void accept_thread(const User &receiver, const Database &db,
   }
 }
 
+void handle_connection(client_ptr client) { client->connect(); }
+
 void send_file(const User &sender, const Database &db,
                const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key) {
   std::string in_file_path;
+
   std::cout << std::endl
             << "Write the full path to file you want to transmit: ";
   std::cin >> in_file_path;
 
   db.print_users();
   std::string in_username;
-  std::cout << std::endl
-            << "Enter a name of user you want to transmit a file to: ";
+  std::cout
+      << std::endl
+      << "Choose a user you want to transmit a file to and enter username: ";
   std::cin >> in_username;
 
   User receiver;
   try {
     receiver = db.extract_user_by_un((in_username));
   } catch (const std::invalid_argument &err) {
-    std::cout << err.what() << std::endl;
+    std::cout << std::endl << err.what() << std::endl;
+    return;
+  }
+
+  if (sender.id() == receiver.id()) {
+    std::cout << std::endl
+              << "Don't choose yourself..." << std::endl
+              << std::endl;
     return;
   }
 

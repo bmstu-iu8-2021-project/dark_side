@@ -11,7 +11,7 @@
 #include "encrypt.h"
 
 void database_redactor(const std::string& db_path) {
-  std::cout << "Welcome to the database redactor!" << std::endl;
+  std::cout << "Welcome to the database redactor!" << std::endl << std::endl;
 
   //  std::string in_uname;
   //  std::string in_pw;
@@ -49,7 +49,6 @@ void database_redactor(const std::string& db_path) {
     std::cout << "Failed to create a directory" << std::endl;
   }
 
-  std::cout << std::endl;
   while (true) {
     std::cout << "Available commands:" << std::endl
               << "  p [ print-users ] " << std::endl
@@ -81,8 +80,8 @@ void database_redactor(const std::string& db_path) {
   }
 }
 
-void add_user(Database& db) {  //}, const std::string& status) {
-  /// Проверяется статус редактора базы данных
+void add_user(Database& db) {
+  // Checking redactor status
   //  if (status != "admin") {
   //    std::cerr << "Access denied" << std::endl;
   //    return;

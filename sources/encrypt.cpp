@@ -69,7 +69,7 @@ bool Secure_channel::receive_handshake(const std::vector<uint8_t>& in_msg,
   size_t sender_time = bytes_to_num(std::vector<uint8_t>(
       in_msg.begin() + sizeof(size_t), in_msg.begin() + 2 * sizeof(size_t)));
 
-  if (my_system_time - sender_time > 600000) {
+  if (my_system_time - sender_time > 6000) {
     std::cerr << "Sender time is too in past" << std::endl;
     return false;
   }
@@ -95,7 +95,7 @@ bool Secure_channel::receive_handshake(const std::vector<uint8_t>& in_msg,
   return true;
 }
 
-/// Sender to receiver step 2
+///
 std::vector<uint8_t> Secure_channel::send_init_data() {
   std::unique_ptr<Botan::RandomNumberGenerator> rng(new Botan::System_RNG);
 
@@ -112,7 +112,7 @@ std::vector<uint8_t> Secure_channel::send_init_data() {
   return init_part;
 }
 
-/// Receiver to sender part 2
+///
 bool Secure_channel::finalise_protocol(const std::vector<uint8_t>& in_msg,
                                        const std::string& role) {
   std::vector<uint8_t> in_data(in_msg.begin(), in_msg.begin() + PK_size_);
@@ -143,7 +143,6 @@ bool Secure_channel::finalise_protocol(const std::vector<uint8_t>& in_msg,
 }
 
 void Secure_channel::extract_pub_key(const std::string& pub_key_path) {
-
   std::unique_ptr<Botan::X509_PublicKey> pub_k(
       Botan::X509::load_key(pub_key_path));
   partner_public_key_ = std::move(pub_k);
@@ -188,17 +187,6 @@ bool Secure_channel::PK_verify_msg(const std::vector<uint8_t>& msg,
   return verifier.verify_message(msg, signature);
 }
 
-std::vector<uint8_t> Secure_channel::compute_mac(
-    const std::vector<uint8_t>& msg) {
-  auto hmac =
-      Botan::MessageAuthenticationCode::create_or_throw("HMAC(SHA-256)");
-  hmac->set_key(hmac_key_);
-  hmac->update(msg);
-  Botan::secure_vector<uint8_t> res(hmac->final());
-  std::vector<uint8_t> result(res.begin(), res.end());
-  return result;
-}
-
 Botan::secure_vector<uint8_t> Secure_channel::keys_hash(
     const Botan::secure_vector<uint8_t>& in_key,
     const std::string& key_purpose) {
@@ -233,49 +221,6 @@ std::vector<uint8_t> Secure_channel::encipher_buff(
   enc_buff.insert(enc_buff.begin(), num.begin(), num.end());
 
   return enc_buff;
-  //
-  //  /// Buff that must be returned
-  //  std::vector<uint8_t> enc_buff;
-  //  enc_buff.reserve(input.size() * 3 / 2);
-  //
-  //  /// Cipher initialisation
-  //  std::unique_ptr<Botan::StreamCipher> cipher(
-  //      Botan::StreamCipher::create("CTR(AES-256,8)"));
-  //  cipher->set_key(session_key_);
-  //  cipher->set_iv(iv_.data(), iv_.size());
-  //
-  //  /// Starting encrypting
-  //  size_t msg_count = 1;
-  //  for (auto it = input.begin(); it < input.end();
-  //       it += static_cast<long>(block_size), ++msg_count) {
-  //    /// Checking the last block size
-  //    if (input.end() - it < block_size) {
-  //      block_size = input.end() - it;
-  //    }
-  //
-  //    /// Counter
-  //    std::vector<uint8_t> counter_value(num_to_bytes(msg_count));
-  //    enc_buff.insert(enc_buff.end(), counter_value.begin(),
-  //    counter_value.end());
-  //
-  //    /// Block that must be encrypted
-  //    std::vector<uint8_t> enc_block(it, it + static_cast<long>(block_size));
-  //
-  //    /// Authentication: MAC(i || l(x) || x || block_data)
-  //    std::vector<uint8_t> auth_data(counter_value +
-  //                                   num_to_bytes(destiny_.size()) +
-  //                                   str_to_bytes(destiny_) + enc_block);
-  //    auth_data = compute_mac(auth_data);
-  //
-  //    /// Block encryption with auth
-  //    enc_block.insert(enc_block.end(), auth_data.begin(), auth_data.end());
-  //    cipher->encipher(enc_block);
-  //
-  //    /// Adding block to buffer
-  //    enc_buff.insert(enc_buff.end(), enc_block.begin(), enc_block.end());
-  //  }
-  //
-  //  return enc_buff;
 }
 
 std::vector<uint8_t> Secure_channel::decrypt_buff(
@@ -306,43 +251,15 @@ std::vector<uint8_t> Secure_channel::decrypt_buff(
   }
 
   return dec_buff_data;
+}
 
-  //  /// Cipher initialisation
-  //  std::unique_ptr<Botan::StreamCipher> cipher(
-  //      Botan::StreamCipher::create("CTR(AES-256,8)"));
-  //  cipher->set_key(session_key_);
-  //  cipher->set_iv(iv_.data(), iv_.size());
-  //
-  //  /// Starting decrypting
-  //  size_t msg_count = 1;
-  //  for (auto it = input.begin() + sizeof(msg_count); it < input.end();
-  //       it += static_cast<long>(enc_block_size), ++msg_count) {
-  //    /// Checking the last block size
-  //    if (input.end() - it < enc_block_size) {
-  //      enc_block_size = input.end() - it;
-  //    }
-  //
-  //    /// Counter (useless)
-  //    //      std::vector<uint8_t> counter_value(it, it + sizeof(msg_count));
-  //    //      it += sizeof(msg_count);
-  //
-  //    /// Block decryption
-  //    std::vector<uint8_t> enc_block(it, it +
-  //    static_cast<long>(enc_block_size)); cipher->decrypt(enc_block);
-  //
-  //    /// Authentication check: MAC(i || l(x) || x || block_data)
-  //    std::vector<uint8_t> received_auth_data(
-  //        enc_block.end() - static_cast<long>(mac_size_), enc_block.end());
-  //    std::vector<uint8_t> assumed_auth_data(num_to_bytes(msg_count) +
-  //                                           num_to_bytes(destiny_.size()) +
-  //                                           str_to_bytes(destiny_) +
-  //                                           enc_block);
-  //    assumed_auth_data = compute_mac(assumed_auth_data);
-  //    if (received_auth_data != assumed_auth_data) {
-  //      discredited_ = true;
-  //    }
-  //
-  //    /// Adding block to buffer
-  //    dec_buff.insert(dec_buff.end(), enc_block.begin(),
-  //                    enc_block.end() - static_cast<long>(mac_size_));
+std::vector<uint8_t> Secure_channel::compute_mac(
+    const std::vector<uint8_t>& msg) {
+  auto hmac =
+      Botan::MessageAuthenticationCode::create_or_throw("HMAC(SHA-256)");
+  hmac->set_key(hmac_key_);
+  hmac->update(msg);
+  Botan::secure_vector<uint8_t> res(hmac->final());
+  std::vector<uint8_t> result(res.begin(), res.end());
+  return result;
 }
