@@ -3,21 +3,35 @@
 #ifndef DARK_SIDE_FILE_SHARING_H
 #define DARK_SIDE_FILE_SHARING_H
 
+#include <condition_variable>
+#include <queue>
+
 #include "convert.h"
 #include "database.h"
 #include "encrypt.h"
 #include "server.h"
 
-void file_sharing(const std::string &db_path);
+std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db,
+                                                User &incoming_user);
 
-std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db, User &incoming_user);
+void file_sharing(const std::string &db_path);
+void send_file(const User &sender, const Database &db,
+               const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key);
 
 void accept_thread(const User &receiver, const Database &db,
                    const std::string &file_dir,
-                   const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key);
+                   const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key,
+                   std::queue<client_ptr> &connections_queue);
+void handle_accept(const User &receiver, const Database &db,
+                   const std::string &file_dir,
+                   const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key,
+                   std::queue<client_ptr> &connections_queue,
+                   ip::tcp::acceptor &acceptor,
+                   std::condition_variable &time_to_work);
+
+void handle_clients_thread(std::queue<client_ptr> &connect_queue);
 void handle_connection(client_ptr client);
 
-void send_file(const User &sender, const Database &db,
-               const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key);
+void stop_it(ip::tcp::acceptor &acceptor);
 
 #endif  // DARK_SIDE_FILE_SHARING_H

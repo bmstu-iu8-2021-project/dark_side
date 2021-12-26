@@ -6,18 +6,19 @@
 #include <boost/asio.hpp>
 #include <vector>
 
-#include "user.h"
 #include "database.h"
 #include "encrypt.h"
+#include "user.h"
 
 using namespace boost::asio;
 
 class Server;
-typedef boost::shared_ptr<Server> client_ptr;
+typedef std::shared_ptr<Server> client_ptr;
 
 class Server : public std::enable_shared_from_this<Server> {
  public:
-  Server(const User &receiver, const Database &db, const std::string &file_dir,
+  Server(ip::tcp::socket socket, const User &receiver, const Database &db,
+         const std::string &file_dir,
          std::shared_ptr<Botan::PKCS8_PrivateKey> p_key);
 
   void connect();
@@ -37,8 +38,6 @@ class Server : public std::enable_shared_from_this<Server> {
   bool is_disconnected();
 
   void disconnect_client();
-
-  ip::tcp::socket &sock();
 
  private:
   io_context context_;
@@ -62,7 +61,5 @@ class Server : public std::enable_shared_from_this<Server> {
   bool disconnect_;
   //  bool clients_changed_;
 };
-
-// detach
 
 #endif  // DARK_SIDE_SERVER_H

@@ -9,6 +9,7 @@
 
 #include "convert.h"
 #include "database.h"
+#include "log.h"
 
 boost::system::error_code err_c;
 using namespace std::chrono;
@@ -50,7 +51,7 @@ bool Client::sec_channel_init() {
     read_to_buff();
     return sec_ch_.finalise_protocol(buff_, "sender");
   } catch (std::exception &err) {
-    std::cout << err.what() << std::endl;
+    BOOST_LOG_TRIVIAL(error) << err.what();
     return false;
   }
 }
@@ -89,7 +90,7 @@ void Client::send_file() {
     file_size -= block_size_;
   }
 
-  std::cout << "File was transmitted" << std::endl;
+  BOOST_LOG_TRIVIAL(info) << "File was transmitted to " << receiver_.username();
 }
 
 std::string Client::filename_parse() {
@@ -120,5 +121,6 @@ void Client::read_to_buff() {
       return;
     }
   }
+
   throw boost::system::system_error(err_c_, "Reading buffer error");
 }

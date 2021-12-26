@@ -2,6 +2,7 @@
 
 #include "file_sharing.h"
 
+#include <atomic>
 #include <boost/filesystem.hpp>
 #include <boost/system.hpp>
 #include <iostream>
@@ -9,54 +10,16 @@
 #include <thread>
 
 #include "client.h"
+#include "log.h"
 #include "server.h"
 
-void file_sharing(const std::string &db_path) {
-  std::cout << "Welcome to the file messenger!" << std::endl << std::endl;
+std::atomic<bool> stop(false);
+std::mutex stop_mutex;
+std::mutex queue_lock;
+std::condition_variable time_to_stop;
+std::condition_variable time_to_work;
 
-  Database db(db_path);
-  User me;
-  std::shared_ptr<Botan::PKCS8_PrivateKey> private_key = log_in(db, me);
-
-  boost::system::error_code err;
-
-  std::string file_dir = "accepted_files";
-  if (!boost::filesystem::exists(file_dir)) {
-    boost::filesystem::create_directory(file_dir, err);
-  }
-  if (err) {
-    std::cout << "Failed to create a directory" << std::endl;
-  }
-
-  std::thread acceptor_thread(accept_thread, std::ref(me), std::ref(db),
-                              std::ref(file_dir), private_key);
-
-  while (true) {
-    std::cout << "Available commands:" << std::endl
-              << "  s [ send-file ] " << std::endl
-              << "  e [ exit ] " << std::endl
-              << std::endl
-              << "Print your option here: ";
-
-    std::string command;
-
-    std::cin >> command;
-    std::cout << std::endl;
-    if (command == "s" || command == "send-file") {
-      send_file(me, db, private_key);
-    } else if (command == "e" || command == "exit") {
-      exit(EXIT_SUCCESS);
-    } else {
-      std::cout << "Invalid command, terminating..." << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
-    std::string line(80, '-');
-    std::cout << line << std::endl << std::endl;
-  }
-
-  acceptor_thread.join();
-}
+/// Logging in interface ///////////////////////////////////////////////////////
 
 std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db,
                                                 User &incoming_user) {
@@ -70,6 +33,7 @@ std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db,
       std::cout << e.what() << std::endl;
       if (i == 2) {
         std::cout << "Something got wrong, see you next time!" << std::endl;
+        BOOST_LOG_TRIVIAL(fatal) << "Program terminated with invalid login";
         exit(EXIT_FAILURE);
       }
       continue;
@@ -103,41 +67,95 @@ std::shared_ptr<Botan::PKCS8_PrivateKey> log_in(const Database &db,
     } catch (const Botan::Decoding_Error &err) {
       if (i == 2) {
         std::cout << "Access denied" << std::endl;
+        BOOST_LOG_TRIVIAL(fatal) << "Program terminated with invalid password";
         exit(EXIT_FAILURE);
       }
 
       std::cout << "Incorrect password, try again!" << std::endl;
+    } catch (const Botan::Stream_IO_Error &err) {
+      std::cout << "You have no key" << std::endl;
+      BOOST_LOG_TRIVIAL(fatal) << "Program terminated with invalid key";
+      exit(EXIT_FAILURE);
     }
   }
   return nullptr;
 }
 
-void accept_thread(const User &receiver, const Database &db,
-                   const std::string &file_dir,
-                   const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key) {
-  io_context context;
-  ip::tcp::acceptor acceptor(context,
-                             ip::tcp::endpoint(ip::tcp::v4(), receiver.port()));
-  acceptor.listen();
-  //  std::cout << "Now you can accept files from other users" << std::endl;
-  std::list<std::thread> thr_list;
-  boost::system::error_code err_c;
+/// File messenger interface ///////////////////////////////////////////////////
+
+void file_sharing(const std::string &db_path) {
+  std::cout << "Welcome to the file messenger!" << std::endl << std::endl;
+
+  Database db(db_path);
+  User me;
+  std::shared_ptr<Botan::PKCS8_PrivateKey> private_key = log_in(db, me);
+
+  boost::system::error_code err;
+
+  std::string file_dir = "accepted_files";
+  if (!boost::filesystem::exists(file_dir)) {
+    boost::filesystem::create_directory(file_dir, err);
+  }
+  if (err) {
+    std::cout << "Failed to create a directory" << std::endl;
+  }
+
+  std::queue<client_ptr> connections_queue;
+
+  std::thread acceptor_thr(accept_thread, std::ref(me), std::ref(db),
+                           std::ref(file_dir), private_key,
+                           std::ref(connections_queue));
+
+  std::thread handle_connections_thr(handle_clients_thread,
+                                     std::ref(connections_queue));
+
   while (true) {
-    client_ptr new_client(new Server(receiver, db, file_dir, p_key));
-    acceptor.accept(new_client->sock(), err_c);
-    if (err_c != boost::system::errc::success) {
-      std::cout << "Acceptor error: " << err_c << std::endl;
-      break;
+    std::cout << "Available commands:" << std::endl
+              << "  s [ send-file ] " << std::endl
+              << "  e [ exit ] " << std::endl
+              << std::endl
+              << "Print your option here: ";
+
+    std::string command;
+
+    std::cin >> command;
+    std::cout << std::endl;
+    if (command == "s" || command == "send-file") {
+      send_file(me, db, private_key);
+    } else if (command == "e" || command == "exit") {
+      {
+        std::unique_lock<std::mutex> stop_locker(stop_mutex);
+        std::unique_lock<std::mutex> queue_locker(queue_lock);
+        stop.store(true);
+        time_to_stop.notify_one();
+        time_to_work.notify_one();
+      }
+      acceptor_thr.join();
+      handle_connections_thr.join();
+
+      BOOST_LOG_TRIVIAL(info) << "Program terminated successfully";
+      exit(EXIT_SUCCESS);
+    } else {
+      std::cout << "Invalid command, terminating..." << std::endl;
+
+      {
+        std::unique_lock<std::mutex> stop_locker(stop_mutex);
+        std::unique_lock<std::mutex> queue_locker(queue_lock);
+        stop.store(true);
+        time_to_stop.notify_one();
+        time_to_work.notify_one();
+      }
+      acceptor_thr.join();
+      handle_connections_thr.join();
+
+      BOOST_LOG_TRIVIAL(fatal) << "Program terminated with invalid command ";
+      exit(EXIT_FAILURE);
     }
 
-    thr_list.emplace_back(handle_connection, new_client);
-  }
-  for (auto &thread : thr_list) {
-    thread.join();
+    std::string line(80, '-');
+    std::cout << line << std::endl << std::endl;
   }
 }
-
-void handle_connection(client_ptr client) { client->connect(); }
 
 void send_file(const User &sender, const Database &db,
                const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key) {
@@ -177,9 +195,87 @@ void send_file(const User &sender, const Database &db,
     }
     client.disconnect();
   } catch (boost::system::system_error &err) {
-    std::cout << "Client terminated" << std::endl;
+    BOOST_LOG_TRIVIAL(error) << "Client terminated with error";
   }
 
   std::string line(80, '-');
   std::cout << std::endl << line << std::endl;
+}
+
+/// Connections acceptor interface /////////////////////////////////////////////
+
+void accept_thread(const User &receiver, const Database &db,
+                   const std::string &file_dir,
+                   const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key,
+                   std::queue<client_ptr> &connections_queue) {
+  io_context context;
+  ip::tcp::acceptor acceptor(context,
+                             ip::tcp::endpoint(ip::tcp::v4(), receiver.port()));
+  acceptor.listen();
+  BOOST_LOG_TRIVIAL(info)
+      << "Now you are available to accept files from other users ";
+
+  std::thread stop_acceptor(stop_it, std::ref(acceptor));
+
+  handle_accept(receiver, db, file_dir, p_key, connections_queue, acceptor,
+                time_to_work);
+  context.run();
+
+  stop_acceptor.join();
+}
+
+void handle_accept(const User &receiver, const Database &db,
+                   const std::string &file_dir,
+                   const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key,
+                   std::queue<client_ptr> &connections_queue,
+                   ip::tcp::acceptor &acceptor,
+                   std::condition_variable &time_to_work) {
+  if (!stop) {
+    acceptor.async_accept([&](std::error_code err_c, ip::tcp::socket socket) {
+      if (!err_c) {
+        client_ptr new_client = std::make_shared<Server>(
+            std::move(socket), receiver, db, file_dir, p_key);
+        {
+          std::unique_lock<std::mutex> locker(queue_lock);
+          connections_queue.push(std::move(new_client));
+          time_to_work.notify_one();
+        }
+      }
+      handle_accept(receiver, db, file_dir, p_key, connections_queue, acceptor,
+                    time_to_work);
+    });
+  }
+}
+
+/// Handling connections interface /////////////////////////////////////////////
+
+void handle_clients_thread(std::queue<client_ptr> &connect_queue) {
+  std::queue<std::thread> in_connections;
+
+  while (!stop) {
+    std::unique_lock<std::mutex> queue_locker(queue_lock);
+    time_to_work.wait(queue_locker,
+                      [&]() { return !connect_queue.empty() || stop.load(); });
+    for (; !connect_queue.empty(); connect_queue.pop()) {
+      in_connections.emplace(
+          std::thread(handle_connection, connect_queue.front()));
+    }
+  }
+
+  for (; !in_connections.empty(); in_connections.pop()) {
+    in_connections.front().join();
+  }
+}
+
+void handle_connection(client_ptr client) { client->connect(); }
+
+/// Stopping program interface /////////////////////////////////////////////////
+
+void stop_it(ip::tcp::acceptor &acceptor) {
+  std::unique_lock<std::mutex> stop_locker(stop_mutex);
+
+  time_to_stop.wait(stop_locker, [&]() { return stop.load(); });
+
+  acceptor.cancel();
+  acceptor.close();
 }

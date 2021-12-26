@@ -4,9 +4,12 @@
 
 #include "database_redactor.h"
 #include "file_sharing.h"
+#include "log.h"
 
 int main() {
   std::string db_path("users.db");
+  log_init();
+  BOOST_LOG_TRIVIAL(trace) << "Program started";
 
   std::cout << "Available commands:" << std::endl
             << "  f [ file-messenger ]  : starts file sharing client"
@@ -33,6 +36,7 @@ int main() {
     exit(EXIT_SUCCESS);
   } else {
     std::cout << "Invalid command, terminating..." << std::endl;
+    //    BOOST_LOG_TRIVIAL(fatal) << "Program terminated with invalid command";
     exit(EXIT_FAILURE);
   }
 

@@ -7,11 +7,12 @@
 #include <utility>
 
 #include "convert.h"
+#include "log.h"
 
-Server::Server(const User &receiver, const Database &db,
+Server::Server(ip::tcp::socket socket, const User &receiver, const Database &db,
                const std::string &file_dir,
                std::shared_ptr<Botan::PKCS8_PrivateKey> p_key)
-    : sock_(context_),
+    : sock_(std::move(socket)),
       dc_timer_(context_),
       receiver_(receiver),
       db_(db),
@@ -27,11 +28,10 @@ void Server::connect() {
     if (sec_channel_init()) {
       accept_file();
     }
-
     disconnect_client();
   } catch (boost::system::system_error &err_c) {
     disconnect_client();
-    std::cerr << "Something's got wrong" << std::endl;
+    BOOST_LOG_TRIVIAL(error) << "Server disconnected client with error";
   }
 }
 
@@ -44,7 +44,7 @@ bool Server::sec_channel_init() {
     read_to_buff();
     return sec_ch_.finalise_protocol(buff_, "receiver");
   } catch (std::exception &err) {
-    std::cout << err.what() << std::endl;
+    BOOST_LOG_TRIVIAL(error) << err.what();
     return false;
   }
 }
@@ -64,14 +64,13 @@ void Server::accept_file() {
   std::ofstream out_f(file_dir_ + '/' + filename, std::ofstream::binary);
 
   for (size_t i = 0; i < blocks_num; ++i) {
-    std::cout << msg_count_ << std::endl;
     read_safe_data();
     std::string block_data(bytes_to_str(buff_));
     out_f.write(&block_data[0], block_data.size());
   }
 
-  std::cout << "File from " << sender_.username()
-            << " was accepted successfully" << std::endl;
+  BOOST_LOG_TRIVIAL(info) << "File from " << sender_.username()
+                          << " was accepted successfully";
 }
 
 void Server::read_safe_data() {
@@ -86,7 +85,7 @@ void Server::read_safe_data() {
         buff_ = sec_ch_.decrypt_buff(buff_, msg_count_);
         ++msg_count_;
       } catch (const std::runtime_error &err) {
-        std::cout << err.what() << std::endl;
+        BOOST_LOG_TRIVIAL(error) << err.what();
         throw boost::system::system_error(err_c_,
                                           "Something got wrong with msg");
       }
@@ -112,11 +111,9 @@ void Server::read_to_buff() {
 
 //  void set_clients_changed() { clients_changed_ = true; }
 
-bool Server::is_disconnected() { return disconnect_; }
+// bool Server::is_disconnected() { return disconnect_; }
 
 void Server::disconnect_client() {
   disconnect_ = true;
   sock_.close(err_c_);
 }
-
-ip::tcp::socket &Server::sock() { return sock_; }

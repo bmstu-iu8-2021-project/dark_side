@@ -9,6 +9,7 @@
 #include "convert.h"
 #include "database.h"
 #include "encrypt.h"
+#include "log.h"
 
 void database_redactor(const std::string& db_path) {
   std::cout << "Welcome to the database redactor!" << std::endl << std::endl;
@@ -69,9 +70,11 @@ void database_redactor(const std::string& db_path) {
     } else if (command == "d" || command == "delete-user") {
       delete_user(db);
     } else if (command == "e" || command == "exit") {
+      BOOST_LOG_TRIVIAL(info) << "Program terminated successfully";
       exit(EXIT_SUCCESS);
     } else {
       std::cout << "Invalid command, terminating..." << std::endl;
+      BOOST_LOG_TRIVIAL(fatal) << "Program terminated with invalid command";
       exit(EXIT_FAILURE);
     }
 
@@ -87,7 +90,6 @@ void add_user(Database& db) {
   //    return;
   //  }
 
-  ///
   size_t in_id;
   std::string in_username;
   std::string in_address;
