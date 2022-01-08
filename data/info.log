@@ -1,0 +1,9 @@
+[2022-01-08 21:28:24.837635][trace]: Program started
+[2022-01-08 21:28:32.483723][info]: Now you are available to accept files from other users 
+[2022-01-08 21:32:25.788760][error]: MAC is not current
+[2022-01-08 21:32:25.788836][error]: Server disconnected client with error
+[2022-01-08 21:34:52.002329][info]: File was transmitted to Dema
+[2022-01-08 21:37:17.602608][info]: File from Dema was accepted successfully
+[2022-01-08 21:44:19.656761][error]: Server disconnected client with error
+[2022-01-08 21:44:42.057679][info]: File from Dema was accepted successfully
+[2022-01-08 21:54:30.831210][trace]: Program terminated successfully

@@ -70,7 +70,7 @@ void database_redactor(const std::string& db_path) {
     } else if (command == "d" || command == "delete-user") {
       delete_user(db);
     } else if (command == "e" || command == "exit") {
-      BOOST_LOG_TRIVIAL(info) << "Program terminated successfully";
+      BOOST_LOG_TRIVIAL(trace) << "Program terminated successfully";
       exit(EXIT_SUCCESS);
     } else {
       std::cout << "Invalid command, terminating..." << std::endl;
@@ -90,58 +90,72 @@ void add_user(Database& db) {
   //    return;
   //  }
 
-  size_t in_id;
+  std::string str_id;
   std::string in_username;
   std::string in_address;
   std::string in_password;
-  size_t in_port;
+  std::string str_port;
 
-  /// Entering data
-  std::cout << "Enter user ID: ";
-  std::cin >> in_id;
-  std::cout << "Enter user name: ";
-  std::cin >> in_username;
-  std::cout << "Enter user password: ";
-  std::cin >> in_password;
-  std::cout << "Enter user address: ";
-  std::cin >> in_address;
-  std::cout << "Enter user port: ";
-  std::cin >> in_port;
+  try {
+    /// Entering data
+    std::cout << "Enter user ID (number): ";
+    std::cin >> str_id;
+    size_t in_id = std::stoul(str_id);
+    std::cout << "Enter user name: ";
+    std::cin >> in_username;
+    std::cout << "Enter user password: ";
+    std::cin >> in_password;
+    std::cout << "Enter user address: ";
+    std::cin >> in_address;
+    std::cout << "Enter user port (this number must be > 1024): ";
+    std::cin >> str_port;
+    size_t in_port = std::stoul(str_port);
 
-  /// Hashing user password
-  std::vector<uint8_t> hash_in_bytes =
-      hash(str_to_bytes(in_password + std::to_string(in_id)));
+    if (in_port <= 1024) {
+      throw std::invalid_argument("You entered wrong port number!");
+    }
 
-  std::string pub_key_storage("public_keys/public_k_" + std::to_string(in_id) +
-                              ".txt");
-  std::string priv_key_storage("private_" + std::to_string(in_id));
+    /// Hashing user password
+    std::vector<uint8_t> hash_in_bytes =
+        hash(str_to_bytes(in_password + std::to_string(in_id)));
 
-  std::unique_ptr<Botan::RandomNumberGenerator> rng(new Botan::System_RNG);
+    std::string pub_key_storage("public_keys/public_k_" +
+                                std::to_string(in_id) + ".txt");
+    std::string priv_key_storage("private_" + std::to_string(in_id));
 
-  /// Generating key pair
-  size_t pub_key_size = 4096;
+    std::unique_ptr<Botan::RandomNumberGenerator> rng(new Botan::System_RNG);
 
-  Botan::RSA_PrivateKey key_pair(*rng, pub_key_size);
-  std::string public_key = Botan::X509::PEM_encode(key_pair);
-  std::string priv_key(Botan::PKCS8::PEM_encode(
-      key_pair, *rng, Botan::hex_encode(hash_in_bytes)));
+    /// Generating key pair
+    size_t pub_key_size = 4096;
 
-  std::ofstream pub_key_file(pub_key_storage, std::ofstream::binary);
-  pub_key_file.write(public_key.data(),
-                     static_cast<std::streamsize>(public_key.size()));
-  pub_key_file.close();
+    Botan::RSA_PrivateKey key_pair(*rng, pub_key_size);
+    std::string public_key = Botan::X509::PEM_encode(key_pair);
+    std::string priv_key(Botan::PKCS8::PEM_encode(
+        key_pair, *rng, Botan::hex_encode(hash_in_bytes)));
 
-  std::ofstream priv_key_file(priv_key_storage, std::ofstream::binary);
-  priv_key_file.write(priv_key.data(),
-                      static_cast<std::streamsize>(priv_key.size()));
-  priv_key_file.close();
+    std::ofstream pub_key_file(pub_key_storage, std::ofstream::binary);
+    pub_key_file.write(public_key.data(),
+                       static_cast<std::streamsize>(public_key.size()));
+    pub_key_file.close();
 
-  User input(in_id, in_username, in_address, in_port, pub_key_storage);
-  db.insert_user(input);
+    std::ofstream priv_key_file(priv_key_storage, std::ofstream::binary);
+    priv_key_file.write(priv_key.data(),
+                        static_cast<std::streamsize>(priv_key.size()));
+    priv_key_file.close();
 
-  std::cout << std::endl
-            << "A new user was added successfully!" << std::endl
-            << std::endl;
+    User input(in_id, in_username, in_address, in_port, pub_key_storage);
+    db.insert_user(input);
+
+    std::cout << std::endl
+              << "A new user was added successfully!" << std::endl
+              << std::endl;
+  } catch (const std::exception& err) {
+    std::cout << std::endl
+              << err.what() << std::endl
+              << std::endl
+              << "User insertion denied" << std::endl
+              << std::endl;
+  }
 }
 
 void delete_user(Database& db) {

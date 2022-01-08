@@ -13,7 +13,7 @@
 #include "log.h"
 #include "server.h"
 
-std::atomic<bool> stop(false);
+std::atomic_bool stop(false);
 std::mutex stop_mutex;
 std::mutex queue_lock;
 std::condition_variable time_to_stop;
@@ -133,7 +133,7 @@ void file_sharing(const std::string &db_path) {
       acceptor_thr.join();
       handle_connections_thr.join();
 
-      BOOST_LOG_TRIVIAL(info) << "Program terminated successfully";
+      BOOST_LOG_TRIVIAL(trace) << "Program terminated successfully";
       exit(EXIT_SUCCESS);
     } else {
       std::cout << "Invalid command, terminating..." << std::endl;
@@ -217,8 +217,7 @@ void accept_thread(const User &receiver, const Database &db,
 
   std::thread stop_acceptor(stop_it, std::ref(acceptor));
 
-  handle_accept(receiver, db, file_dir, p_key, connections_queue, acceptor,
-                time_to_work);
+  handle_accept(receiver, db, file_dir, p_key, connections_queue, acceptor);
   context.run();
 
   stop_acceptor.join();
@@ -228,8 +227,7 @@ void handle_accept(const User &receiver, const Database &db,
                    const std::string &file_dir,
                    const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key,
                    std::queue<client_ptr> &connections_queue,
-                   ip::tcp::acceptor &acceptor,
-                   std::condition_variable &time_to_work) {
+                   ip::tcp::acceptor &acceptor) {
   if (!stop) {
     acceptor.async_accept([&](std::error_code err_c, ip::tcp::socket socket) {
       if (!err_c) {
@@ -241,8 +239,7 @@ void handle_accept(const User &receiver, const Database &db,
           time_to_work.notify_one();
         }
       }
-      handle_accept(receiver, db, file_dir, p_key, connections_queue, acceptor,
-                    time_to_work);
+      handle_accept(receiver, db, file_dir, p_key, connections_queue, acceptor);
     });
   }
 }

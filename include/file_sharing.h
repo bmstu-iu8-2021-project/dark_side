@@ -26,8 +26,7 @@ void handle_accept(const User &receiver, const Database &db,
                    const std::string &file_dir,
                    const std::shared_ptr<Botan::PKCS8_PrivateKey> &p_key,
                    std::queue<client_ptr> &connections_queue,
-                   ip::tcp::acceptor &acceptor,
-                   std::condition_variable &time_to_work);
+                   ip::tcp::acceptor &acceptor);
 
 void handle_clients_thread(std::queue<client_ptr> &connect_queue);
 void handle_connection(client_ptr client);
